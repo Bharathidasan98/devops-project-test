@@ -128,6 +128,9 @@
   </dependencies>
   <properties>
     <maven.compiler.target>23</maven.compiler.target>
+    <sonar.projectKey>java_app</sonar.projectKey>
     <maven.compiler.source>23</maven.compiler.source>
+    <sonar.host.url>${sonar.host.url}</sonar.host.url>
+    <sonar.login>${sonar.login}</sonar.login>
   </properties>
 </project>
