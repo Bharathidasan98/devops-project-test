@@ -1,0 +1,46 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: logstash
+  namespace: elk
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      volumes:
+        - name: logstash-pipeline
+          configMap:
+            name: logstash-pipeline-config
+        - name: logs
+          hostPath:
+            path: /var/log/containers  # Ensure this path is correct
+            type: Directory    
+      containers:
+        - name: logstash
+          image: docker.elastic.co/logstash/logstash:8.17.0
+          ports:
+            - containerPort: 5044
+            - containerPort: 9600
+          volumeMounts:
+            - name: logstash-pipeline
+              mountPath: /usr/share/logstash/pipeline
+            - name: logs
+              mountPath: /var/log/containers
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+  namespace: elk
+spec:
+  ports:
+  - port: 5044
+    targetPort: 5044
+  selector:
+    app: logstash             

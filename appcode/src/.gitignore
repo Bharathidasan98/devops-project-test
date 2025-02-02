@@ -1,0 +1,5 @@
+*.jar
+dependency-reduced-pom.xml
+target/
+
+*.class

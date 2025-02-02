@@ -1,0 +1,16 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: nginx-config
+  namespace: nginx-ingress
+data:
+#   server-names-hash-bucket-size: "0"
+#   use-forwarded-headers: "true"
+#   compute-full-forwarded-for: "true"
+#   enable-underscores-in-headers: "true"
+#   ssl-redirect: "false"
+#   redirect-to-https: "false"
+#   server-tokens: "false"
+#   allow-snippet-annotations: "true"
+#   no-server-name: "true"  # Allows Ingress without a host field
+#   default-server: "true"  # Enables a default backend for unhosted requests

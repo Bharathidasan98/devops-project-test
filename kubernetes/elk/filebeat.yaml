@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: elk
+spec:
+  selector:
+    matchLabels:
+      app: filebeat
+  template:
+    metadata:
+      labels:
+        app: filebeat
+    spec:
+      containers:
+      - name: filebeat
+        image: docker.elastic.co/beats/filebeat:7.17.0
+        args: ["-e", "-c", "/usr/share/filebeat/filebeat.yml"]
+        securityContext:
+          runAsUser: 0 
+        env:
+        - name: ELASTICSEARCH_HOSTS
+          value: "http://elasticsearch:9200"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /usr/share/filebeat/filebeat.yml
+          subPath: filebeat.yml
+        - name: varlog
+          mountPath: /var/log
+        - name: varlogpods
+          mountPath: /var/log/pods
+          readOnly: true
+      volumes:
+      - name: config-volume
+        configMap:
+          name: filebeat-config
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlogpods
+        hostPath:
+          path: /var/log/pods
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: elk
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+    - type: container
+      paths:
+        - "/var/log/pods/*/*/*.log"
+      # Disable JSON decoding for non-JSON logs
+      json.keys_under_root: false
+      json.message_key: "log"  # If logs have a "log" field for JSON data
+
+    output.logstash:
+       hosts: ["logstash:5044"]
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: filebeat
+  namespace: elk

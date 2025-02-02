@@ -1,0 +1,77 @@
+#kind: ConfigMap
+#apiVersion: v1
+#metadata:
+#  name: logstash-pipeline-config
+#  namespace: elk
+#data:
+#  logstash.conf: |
+#    input {
+#      file {
+#        path => "/usr/share/logstash/*.log"
+#        start_position => "beginning"
+#        sincedb_path => "/dev/null"
+#        codec => "json"
+#      }
+#    }
+#    filter {
+#      if [kubernetes] {
+#        mutate {
+#          add_field => { "namespace" => "%{[kubernetes][namespace]}" }
+#          add_field => { "pod_name" => "%{[kubernetes][pod]}" }
+#        }
+#      }
+#    }
+#    output {
+#      elasticsearch {
+#        hosts => ["http://elasticsearch.elk.svc.cluster.local:9200"]
+#        index => "nginx-logs-%{+YYYY.MM.dd}"
+#      }
+#      stdout { codec => rubydebug }
+#    }
+---
+#with filebeat
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-pipeline-config
+  namespace: elk
+data:
+  logstash.conf: |
+    input {
+      beats {
+        port => 5044
+      }
+    }
+
+    filter {
+      # If JSON parsing is successful
+      json {
+        source => "message"
+        target => "json_parsed"
+        add_tag => ["json_success"]
+      }
+
+      # If parsing fails, treat it as raw log text
+      if "_jsonparsefailure" in [tags] {
+        mutate {
+          rename => { "message" => "raw_log" }
+          remove_field => ["json_parsed"]
+          add_tag => ["plain_text_log"]
+        }
+      }
+
+      # Handle JSON timestamp parsing (if available)
+      if "json_success" in [tags] {
+        date {
+          match => ["[json_parsed][ts]", "ISO8601"]
+          target => "@timestamp"
+        }
+      }
+    }
+
+    output {
+      elasticsearch {
+        hosts => ["http://elasticsearch.elk.svc.cluster.local:9200"]
+        index => "filebeat-%{+YYYY.MM.dd}"
+      }
+    }

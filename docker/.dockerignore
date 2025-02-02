@@ -1,0 +1,5 @@
+node_modules
+*.log
+target/     # For Maven/Gradle builds
+*.iml       # IDE config files
+.DS_Store   # macOS system files
