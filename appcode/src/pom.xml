@@ -12,8 +12,9 @@
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
         <sonar.projectKey>java_app</sonar.projectKey>
-        <sonar.host.url>${sonar.host.url}</sonar.host.url>
-        <sonar.login>${sonar.login}</sonar.login>
+        <sonar.maven.plugin.version>3.9.1.2184</sonar.maven.plugin.version>
+      <!--  <sonar.host.url>${sonar.host.url}</sonar.host.url>
+        <sonar.login>${sonar.login}</sonar.login> -->
     </properties>
     <dependencies>
         <!-- MySQL JDBC Driver -->
@@ -111,6 +112,12 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.0.0-M5</version> <!-- Ensure a compatible version -->
             </plugin>
+            <plugin>
+            <groupId>org.sonarsource.scanner.maven</groupId>
+            <artifactId>sonar-maven-plugin</artifactId>
+            <version>${sonar.maven.plugin.version}</version>
+           </plugin>
+
         </plugins>
     </build>
 </project>
