@@ -3,9 +3,9 @@ package edu.ant.myapp;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.InputStreamReader;
 import java.io.BufferedReader;
@@ -15,6 +15,7 @@ import java.util.Map;
 
 public class FirstApp {
 
+    private static final Logger logger = LoggerFactory.getLogger(FirstApp.class);
     private DatabaseConnection dbConnection;
 
     // Constructor for dependency injection
@@ -27,7 +28,7 @@ public class FirstApp {
         return dbConnection.saveData(username, bloodGroup, age);
     }
 
-    // HTTP handler for incoming requests
+    // HTTP handler for /saveData endpoint
     private static class SaveDataHandler implements HttpHandler {
         private final FirstApp app;
 
@@ -37,106 +38,76 @@ public class FirstApp {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            // CORS headers for every request
+            logger.info("Received request: " + exchange.getRequestMethod());
+
+            // Allow CORS
             exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+            exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "POST, OPTIONS");
             exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type");
 
-            // Handle preflight OPTIONS request
+            // Handle OPTIONS request
             if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(200, -1); // No body for OPTIONS request
+                exchange.sendResponseHeaders(200, -1);
                 return;
             }
 
-            // Handle POST request
+            // Handle only POST requests
             if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                // Parse form data
                 Map<String, String> formData = parseFormData(exchange);
-
                 String username = formData.get("username");
                 String bloodGroup = formData.get("bloodGroup");
                 int age = Integer.parseInt(formData.get("age"));
 
-                // Validate input
                 if (username == null || bloodGroup == null || age <= 0) {
-                    String response = "Invalid or missing parameters.";
-                    exchange.sendResponseHeaders(400, response.length());
-                    try (OutputStream os = exchange.getResponseBody()) {
-                        os.write(response.getBytes());
-                    }
+                    sendResponse(exchange, 400, "Invalid input data");
                     return;
                 }
 
-                // Save data
                 boolean result = app.saveToDatabase(username, bloodGroup, age);
-                String response = result ? "Data saved successfully!" : "Error saving data.";
-                exchange.sendResponseHeaders(200, response.length());
-                try (OutputStream os = exchange.getResponseBody()) {
-                    os.write(response.getBytes());
-                }
+                sendResponse(exchange, 200, result ? "Data saved successfully!" : "Error saving data.");
             } else {
-                String response = "Invalid request method.";
-                exchange.sendResponseHeaders(405, response.length());
-                try (OutputStream os = exchange.getResponseBody()) {
-                    os.write(response.getBytes());
-                }
+                sendResponse(exchange, 405, "Invalid request method.");
             }
         }
 
         // Helper method to parse form data
         private Map<String, String> parseFormData(HttpExchange exchange) throws IOException {
             Map<String, String> formData = new HashMap<>();
-
-            // Read the form data from the request body
-            InputStreamReader isr = new InputStreamReader(exchange.getRequestBody(), "UTF-8");
-            BufferedReader br = new BufferedReader(isr);
-            StringBuilder sb = new StringBuilder();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(exchange.getRequestBody(), "UTF-8"));
             String line;
-
-            while ((line = br.readLine()) != null) {
-                sb.append(line);
-            }
-
-            // Split the data into key-value pairs
-            String[] params = sb.toString().split("&");
-            for (String param : params) {
-                String[] keyValue = param.split("=");
-                if (keyValue.length == 2) {
-                    formData.put(keyValue[0], keyValue[1]);
+            while ((line = reader.readLine()) != null) {
+                String[] params = line.split("&");
+                for (String param : params) {
+                    String[] keyValue = param.split("=");
+                    if (keyValue.length == 2) {
+                        formData.put(keyValue[0], keyValue[1]);
+                    }
                 }
             }
             return formData;
         }
-    }
 
-    // Main method - entry point of the application
-    public static void main(String[] args) throws IOException {
-        // Default port
-        int port = 8080;
-
-        // Check for port override via command-line arguments
-        if (args.length > 0) {
-            try {
-                port = Integer.parseInt(args[0]);
-            } catch (NumberFormatException e) {
-                System.out.println("Invalid port number provided. Using default port 8080.");
+        // Helper method to send response
+        private void sendResponse(HttpExchange exchange, int statusCode, String response) throws IOException {
+            exchange.sendResponseHeaders(statusCode, response.length());
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(response.getBytes());
             }
         }
+    }
 
-        System.out.println("Starting server on port: " + port);
+    // Main method - entry point
+    public static void main(String[] args) throws IOException {
+        int port = 8080;
+        logger.info("Starting server on port: " + port);
 
-        // Create a DatabaseConnection instance
         DatabaseConnection dbConnection = new DatabaseConnection();
-
-        // Inject the DatabaseConnection into FirstApp
         FirstApp app = new FirstApp(dbConnection);
 
-        // Create an HTTP server
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/saveData", new SaveDataHandler(app));
-
-        // Start the server
         server.start();
-        System.out.println("Server started. Listening on port: " + port);
+
+        logger.info("Server started. Listening on port: " + port);
     }
 }

@@ -1,0 +1,4 @@
+- name: db creds
+  template:
+    src: config.properties.j2
+    dest: /Users/bharatidasanm/techman/tools/app/src/main/resources/config.properties

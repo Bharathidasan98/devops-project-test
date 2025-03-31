@@ -1,0 +1,6 @@
+- name: app_deployment
+  hosts: localhost
+  become: false
+  roles:
+    - role: service
+  vars_files: service.vault.yaml
