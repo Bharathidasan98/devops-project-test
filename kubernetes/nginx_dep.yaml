@@ -30,6 +30,7 @@ spec:
   type: ClusterIP
   ports:
   -  port: 8080
-     target_port: 80
+     targetPort: 80
      name: app
+     protocol: TCP
 ---
